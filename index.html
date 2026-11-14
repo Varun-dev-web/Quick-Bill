@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f0eee7">
+  <meta name="description" content="QuickBill is a private, browser-based invoice and receipt workspace.">
+  <title>QuickBill — Invoice desk</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#item-entry-form">Skip to invoice controls</a>
+
+  <header class="topbar no-print">
+    <a class="topbar-brand" href="#main-content" aria-label="QuickBill invoice desk">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M8 4.5h12l5 5v18H8z" stroke="currentColor" stroke-width="1.6" />
+          <path d="M20 4.5v5h5M12 15h9M12 19h9M12 23h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" />
+        </svg>
+      </span>
+      <span class="brand-copy">
+        <span class="brand-name">QuickBill</span>
+        <span id="autosave-indicator" class="autosave-status" aria-live="polite">Local draft · ready</span>
+      </span>
+    </a>
+
+    <div class="action-btns" aria-label="Invoice actions">
+      <div class="segmented-control" role="group" aria-label="Document format">
+        <button type="button" id="mode-a4-btn" class="segment-btn is-active" data-mode="A4" aria-pressed="true" title="A4 invoice layout">A4</button>
+        <button type="button" id="mode-receipt-btn" class="segment-btn" data-mode="RECEIPT" aria-pressed="false" title="80 millimetre receipt layout">Receipt</button>
+      </div>
+
+      <button type="button" id="load-demo-btn" class="btn btn-quiet" title="Load a sample invoice (Alt+D)">Sample</button>
+      <button type="button" id="new-invoice-btn" class="btn btn-secondary" title="Start a new invoice (Alt+N)">New bill</button>
+      <button type="button" id="save-history-btn" class="btn btn-secondary" title="Save a snapshot to history (Alt+S)">Save</button>
+      <button type="button" id="open-history-btn" class="btn btn-secondary" aria-expanded="false" aria-controls="history-drawer" title="Open saved invoices (Alt+H)">
+        History <span id="history-count-badge" class="count-badge">0</span>
+      </button>
+      <button type="button" id="export-csv-btn" class="btn btn-secondary" title="Download this invoice as CSV">CSV</button>
+      <button type="button" id="print-invoice-btn" class="btn btn-primary" title="Print or save as PDF (Ctrl/Cmd+P)">
+        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M5 7V2.5h10V7M5 14H3.5A1.5 1.5 0 0 1 2 12.5v-4A1.5 1.5 0 0 1 3.5 7h13A1.5 1.5 0 0 1 18 8.5v4a1.5 1.5 0 0 1-1.5 1.5H15M5 11.5h10v6H5z" />
+          <path d="M15 9.5h.01" />
+        </svg>
+        Print / PDF
+      </button>
+    </div>
+  </header>
+
+  <main id="main-content" class="workspace">
+    <aside class="command-console no-print" aria-label="Invoice controls">
+      <div class="console-intro">
+        <p class="eyebrow">Invoice workspace <span>01</span></p>
+        <h1 class="console-title">Build an invoice</h1>
+        <p class="console-note">Edits are kept in this browser on this device.</p>
+      </div>
+
+      <section class="panel-card input-form" aria-labelledby="entry-card-title">
+        <div class="panel-card-header">
+          <div>
+            <span class="panel-eyebrow">Compose · 01</span>
+            <h2 id="entry-card-title" class="panel-title">Line items</h2>
+          </div>
+          <span class="kbd-hint"><kbd>Enter</kbd> to move</span>
+        </div>
+
+        <div class="catalog-bar">
+          <div class="catalog-bar-header">
+            <span class="field-label">Quick catalog</span>
+            <button type="button" id="save-preset-btn" class="link-btn" title="Save the current description and price to the catalog">Save current</button>
+          </div>
+          <div id="catalog-chips" class="catalog-chips" role="list" aria-label="Saved product and service presets"></div>
+        </div>
+
+        <form id="item-entry-form" class="entry-form" novalidate>
+          <div class="form-field">
+            <label for="item-name-input" class="field-label">Description <span class="req-star" aria-hidden="true">*</span></label>
+            <input type="text" id="item-name-input" class="text-input" list="catalog-datalist" placeholder="Item or service" autocomplete="off" maxlength="140" required aria-describedby="entry-help">
+            <datalist id="catalog-datalist"></datalist>
+            <span id="entry-help" class="field-hint">Choose a catalog item or enter a new one.</span>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="item-qty-input" class="field-label">Quantity <span class="req-star" aria-hidden="true">*</span></label>
+              <input type="number" id="item-qty-input" class="text-input tabular-num" placeholder="1" value="1" min="0.0001" step="any" inputmode="decimal" required>
+            </div>
+            <div class="form-field">
+              <label for="item-price-input" class="field-label">Unit price <span class="req-star" aria-hidden="true">*</span></label>
+              <div class="input-with-prefix">
+                <span id="entry-currency-prefix" class="input-prefix" aria-hidden="true">₹</span>
+                <input type="number" id="item-price-input" class="text-input has-prefix tabular-num" placeholder="0.00" min="0.01" step="0.01" inputmode="decimal" required>
+              </div>
+            </div>
+          </div>
+
+          <div id="form-error-banner" class="error-banner" role="alert" hidden></div>
+
+          <div class="entry-form-actions">
+            <button type="submit" id="add-item-btn" class="btn btn-primary btn-block">Add line item</button>
+            <button type="button" id="clear-items-btn" class="btn btn-outline-danger" title="Remove every line item from this invoice">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel-card" aria-labelledby="customer-card-title">
+        <div class="panel-card-header">
+          <div>
+            <span class="panel-eyebrow">Recipient · 02</span>
+            <h2 id="customer-card-title" class="panel-title">Customer &amp; dates</h2>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="meta-invoice-number" class="field-label">Invoice number</label>
+            <input type="text" id="meta-invoice-number" class="text-input tabular-num" placeholder="INV-2026-001" maxlength="40">
+          </div>
+          <div class="form-field">
+            <label for="meta-status" class="field-label">Payment status</label>
+            <select id="meta-status" class="select-input">
+              <option value="PENDING">Pending</option>
+              <option value="PAID">Paid</option>
+              <option value="OVERDUE">Overdue</option>
+              <option value="DRAFT">Draft</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="meta-issue-date" class="field-label">Issue date</label>
+            <input type="date" id="meta-issue-date" class="text-input tabular-num">
+          </div>
+          <div class="form-field">
+            <label for="meta-due-date" class="field-label">Due date</label>
+            <input type="date" id="meta-due-date" class="text-input tabular-num">
+          </div>
+        </div>
+
+        <hr class="panel-divider">
+
+        <div class="form-field">
+          <label for="customer-name" class="field-label">Customer / company</label>
+          <input type="text" id="customer-name" class="text-input" placeholder="Customer name" maxlength="100">
+        </div>
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="customer-contact" class="field-label">Email or phone</label>
+            <input type="text" id="customer-contact" class="text-input" placeholder="accounts@example.com" maxlength="100">
+          </div>
+          <div class="form-field">
+            <label for="customer-tax-id" class="field-label">Tax ID / GSTIN</label>
+            <input type="text" id="customer-tax-id" class="text-input tabular-num" placeholder="Optional" maxlength="40">
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="customer-address" class="field-label">Billing address</label>
+          <textarea id="customer-address" class="textarea-input" rows="2" placeholder="Street, city, region and postal code" maxlength="240"></textarea>
+        </div>
+      </section>
+
+      <section class="panel-card" aria-labelledby="finance-card-title">
+        <div class="panel-card-header">
+          <div>
+            <span class="panel-eyebrow">Calculation · 03</span>
+            <h2 id="finance-card-title" class="panel-title">Tax &amp; discount</h2>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="config-currency" class="field-label">Currency</label>
+            <select id="config-currency" class="select-input">
+              <option value="INR">₹ INR — Indian rupee</option>
+              <option value="USD">$ USD — US dollar</option>
+              <option value="EUR">€ EUR — Euro</option>
+              <option value="GBP">£ GBP — British pound</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="config-tax-rate" class="field-label">Tax rate (%)</label>
+            <input type="number" id="config-tax-rate" class="text-input tabular-num" value="18" min="0" max="100" step="0.01" inputmode="decimal">
+          </div>
+        </div>
+
+        <label class="checkbox-row" for="config-split-gst">
+          <input type="checkbox" id="config-split-gst">
+          <span class="checkbox-text">Split tax equally into <strong>CGST + SGST</strong></span>
+        </label>
+
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="config-discount-type" class="field-label">Discount type</label>
+            <select id="config-discount-type" class="select-input">
+              <option value="PERCENT">Percentage (%)</option>
+              <option value="FLAT">Flat amount</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="config-discount-value" class="field-label">Discount value</label>
+            <input type="number" id="config-discount-value" class="text-input tabular-num" value="0" min="0" step="0.01" inputmode="decimal">
+          </div>
+        </div>
+      </section>
+
+      <details class="panel-card collapsible-card">
+        <summary class="collapsible-summary">
+          <span>
+            <span class="panel-eyebrow">Your details · 04</span>
+            <span class="panel-title">Seller &amp; payment terms</span>
+          </span>
+          <span class="chevron-indicator" aria-hidden="true">+</span>
+        </summary>
+        <div class="collapsible-body">
+          <div class="form-field">
+            <label for="seller-name" class="field-label">Business name</label>
+            <input type="text" id="seller-name" class="text-input" maxlength="100">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="seller-email" class="field-label">Billing email</label>
+              <input type="email" id="seller-email" class="text-input" maxlength="100" autocomplete="email">
+            </div>
+            <div class="form-field">
+              <label for="seller-phone" class="field-label">Phone</label>
+              <input type="text" id="seller-phone" class="text-input" maxlength="40" autocomplete="tel">
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="seller-tax-id" class="field-label">Business Tax ID / GSTIN</label>
+            <input type="text" id="seller-tax-id" class="text-input tabular-num" maxlength="40">
+          </div>
+          <div class="form-field">
+            <label for="seller-address" class="field-label">Business address</label>
+            <textarea id="seller-address" class="textarea-input" rows="2" maxlength="240"></textarea>
+          </div>
+          <div class="form-field">
+            <label for="meta-notes" class="field-label">Notes &amp; payment terms</label>
+            <textarea id="meta-notes" class="textarea-input" rows="3" maxlength="320"></textarea>
+          </div>
+          <div class="seller-reset-row">
+            <button type="button" id="reset-seller-btn" class="link-btn">Restore sample seller details</button>
+          </div>
+        </div>
+      </details>
+
+      <footer class="shortcuts-legend" aria-label="Keyboard shortcuts">
+        <span><kbd>Enter</kbd> Add item</span>
+        <span><kbd>Alt+N</kbd> New</span>
+        <span><kbd>Alt+S</kbd> Save</span>
+        <span><kbd>Alt+H</kbd> History</span>
+        <span><kbd>Alt+D</kbd> Sample</span>
+        <span><kbd>Esc</kbd> Close / clear</span>
+      </footer>
+    </aside>
+
+    <section id="preview-stage" class="preview-stage" aria-label="Live invoice preview">
+      <div class="stage-toolbar no-print">
+        <div class="stage-meta">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="stage-mode-label" class="stage-mode-text">Live A4 invoice · 210 × 297 mm</span>
+          <span class="stage-sep" aria-hidden="true">/</span>
+          <span id="stage-item-counter" class="stage-counter-text">0 line items</span>
+        </div>
+        <p class="stage-hint">Edit quantity or unit price in place.</p>
+      </div>
+
+      <article id="invoice-card" class="invoice-card" data-mode="A4" aria-label="Invoice document">
+        <div class="invoice-accent-bar" aria-hidden="true"></div>
+
+        <header class="doc-header">
+          <div class="seller-block">
+            <div class="doc-brand-mark" aria-hidden="true">QB</div>
+            <div class="seller-details">
+              <h2 id="preview-seller-name" class="seller-name">QuickBill Studio Pvt. Ltd.</h2>
+              <p id="preview-seller-address" class="seller-line"></p>
+              <p id="preview-seller-contact" class="seller-line"></p>
+              <p id="preview-seller-tax" class="seller-tax-badge"></p>
+            </div>
+          </div>
+          <div class="doc-title-block">
+            <span id="preview-doc-type" class="doc-type-label">Tax invoice</span>
+            <div id="preview-invoice-number" class="doc-number tabular-num">#INV-2026-001</div>
+            <div class="status-badge-wrap">
+              <span id="preview-status-badge" class="status-badge" data-status="PENDING">PENDING</span>
+            </div>
+          </div>
+        </header>
+
+        <section class="doc-parties-grid" aria-label="Billing parties and dates">
+          <div class="party-box">
+            <span class="doc-section-label">Bill to</span>
+            <strong id="preview-customer-name" class="customer-name is-placeholder">Walk-in / Cash Customer</strong>
+            <p id="preview-customer-address" class="party-line"></p>
+            <p id="preview-customer-contact" class="party-line"></p>
+            <p id="preview-customer-tax" class="party-tax"></p>
+          </div>
+          <div class="dates-box">
+            <div class="meta-pair">
+              <span class="meta-key">Issue date</span>
+              <span id="preview-issue-date" class="meta-val tabular-num">—</span>
+            </div>
+            <div class="meta-pair" id="preview-due-date-row">
+              <span class="meta-key">Due date</span>
+              <span id="preview-due-date" class="meta-val tabular-num">—</span>
+            </div>
+            <div class="meta-pair">
+              <span class="meta-key">Currency</span>
+              <span id="preview-currency-badge" class="currency-code-pill">INR (₹)</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-table-section" aria-label="Invoice line items">
+          <div class="table-scroll-container" tabindex="0" aria-label="Line items table; scroll horizontally to see all columns">
+            <table class="invoice-table">
+              <caption class="sr-only">Invoice items, quantities and amounts</caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="col-index">No.</th>
+                  <th scope="col" class="col-desc">Description</th>
+                  <th scope="col" class="col-qty num-col">Qty</th>
+                  <th scope="col" class="col-price num-col">Unit price</th>
+                  <th scope="col" class="col-total num-col">Amount</th>
+                  <th scope="col" class="col-action delete-col no-print">Remove</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="doc-summary-grid" aria-label="Invoice totals and notes">
+          <div class="notes-column">
+            <div class="words-box">
+              <span class="doc-section-label">Amount in words</span>
+              <p id="preview-amount-words" class="amount-words-text">Indian Rupees Zero Only</p>
+            </div>
+            <div class="terms-box">
+              <span class="doc-section-label">Notes &amp; terms</span>
+              <p id="preview-notes" class="notes-text"></p>
+            </div>
+          </div>
+
+          <div class="totals-column">
+            <div class="totals-row">
+              <span class="totals-label">Subtotal <span class="totals-units">(<span id="summary-qty-count">0</span> units)</span></span>
+              <span id="subtotal-amount" class="totals-value tabular-num">₹0.00</span>
+            </div>
+            <div id="discount-row" class="totals-row discount-row" hidden>
+              <span id="discount-label" class="totals-label">Discount</span>
+              <span id="discount-amount" class="totals-value tabular-num">-₹0.00</span>
+            </div>
+            <div id="tax-single-row" class="totals-row">
+              <span id="tax-label" class="totals-label">Tax (18%)</span>
+              <span id="tax-amount" class="totals-value tabular-num">₹0.00</span>
+            </div>
+            <div id="tax-cgst-row" class="totals-row" hidden>
+              <span id="cgst-label" class="totals-label">CGST (9%)</span>
+              <span id="cgst-amount" class="totals-value tabular-num">₹0.00</span>
+            </div>
+            <div id="tax-sgst-row" class="totals-row" hidden>
+              <span id="sgst-label" class="totals-label">SGST (9%)</span>
+              <span id="sgst-amount" class="totals-value tabular-num">₹0.00</span>
+            </div>
+            <div class="grand-total-box">
+              <div class="grand-total-label-group">
+                <span class="grand-total-title">Total due</span>
+                <span id="grand-total-currency-tag" class="currency-pill">INR</span>
+              </div>
+              <strong id="grand-total" class="grand-total-amount tabular-num">₹0.00</strong>
+            </div>
+          </div>
+        </section>
+
+        <footer class="receipt-footer" aria-hidden="true">
+          <div class="receipt-barcode"></div>
+          <p class="receipt-thanks">Thank you for your business</p>
+        </footer>
+
+        <footer class="doc-footer">
+          <p class="doc-footer-meta">Computer-generated document · No physical signature required</p>
+          <div class="signatory-block">
+            <div class="signatory-line"></div>
+            <span class="signatory-caption">Authorized signature</span>
+          </div>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <div class="mobile-summary-bar no-print">
+    <div class="mobile-total-meta">
+      <span class="mobile-total-label">Total due</span>
+      <strong id="mobile-grand-total" class="mobile-total-val tabular-num">₹0.00</strong>
+    </div>
+    <div class="mobile-bar-actions">
+      <button type="button" id="jump-preview-btn" class="btn btn-secondary">Preview</button>
+      <button type="button" id="mobile-print-btn" class="btn btn-primary">Print / PDF</button>
+    </div>
+  </div>
+
+  <div id="history-backdrop" class="drawer-backdrop no-print" hidden aria-hidden="true"></div>
+  <aside id="history-drawer" class="history-drawer no-print" role="dialog" aria-modal="true" aria-labelledby="history-drawer-title" aria-describedby="history-drawer-description" hidden>
+    <div class="drawer-header">
+      <div>
+        <span class="panel-eyebrow">Local archive</span>
+        <h2 id="history-drawer-title" class="drawer-title">Invoice history</h2>
+        <p id="history-drawer-description" class="drawer-description">Saved snapshots stay in this browser.</p>
+      </div>
+      <button type="button" id="close-history-btn" class="icon-close-btn" aria-label="Close invoice history">×</button>
+    </div>
+    <div class="drawer-controls">
+      <input type="search" id="history-search-input" class="text-input" placeholder="Search invoice, customer or status" aria-label="Search saved invoices">
+      <button type="button" id="clear-history-btn" class="link-btn danger-link">Clear all</button>
+    </div>
+    <div id="history-list" class="history-list" role="list" aria-label="Saved invoices"></div>
+  </aside>
+
+  <div id="toast-container" class="toast-container no-print" aria-live="polite" aria-atomic="false"></div>
+</body>
+</html>
